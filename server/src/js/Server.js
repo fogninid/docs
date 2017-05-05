@@ -6,15 +6,21 @@ const http = require('http');
 const scan = require('./Scan');
 
 const errorHandler = (res) => e => {
-  if (Error.isPrototypeOf(e)) {
-    console.error(e.stack);
+  try {
+    if (e instanceof Error) {
+      console.error(e.stack);
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end('{"error":"unknown"}');
+    } else {
+      res.statusCode = e.code;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({error: e.cause}))
+    }
+  } catch (e) {
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({error: e}));
-  } else {
-    res.statusCode = e.code;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({error: e.cause}))
+    res.end('{"error":"unknown"}');
   }
 };
 
