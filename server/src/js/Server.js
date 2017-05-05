@@ -1,12 +1,15 @@
 'use strict';
 
+const listen = process.argv.length > 2 ? process.argv[2] : 8080;
+const repodir = "/tmp";
+
 const WebSocket = require('ws');
+
 const http = require('http');
-
 const scan = require('./Scan');
-const Repo = require('./Repository').Repo;
 
-const repo = new Repo("/tmp");
+const Repo = require('./Repository').Repo;
+const repo = new Repo(repodir);
 
 const errorHandler = (res) => e => {
   try {
@@ -103,6 +106,5 @@ wsServer.on('listening', () => {
   console.log('web socket server started');
 });
 
-const listen = process.argv.length > 2 ? process.argv[2] : 8080;
 console.log("listening on %s", listen);
 httpServer.listen(listen);
