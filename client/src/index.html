@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        span.update, span.started {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<script src="js/jquery-3.2.1.min.js"></script>
+
+<div>
+    <form action="">
+        <input id="scan" value="Scan" type="button">
+    </form>
+</div>
+<div id="output"></div>
+
+<script language="javascript" type="text/javascript">
+  $(function() {
+    var $out = $("#output");
+
+    var ajaxPoll;
+    ajaxPoll = function(id) {
+      $.ajax({url: "/scan/" + id})
+        .then(function(data) {
+          $("<span>").addClass("update").text("job " + id + " is now: " + JSON.stringify(data)).appendTo($out);
+          if (!(data.status === "error" || data.status === "success")) {
+            window.setTimeout(function() {
+              ajaxPoll(id);
+            }, 300);
+          }
+        })
+        .catch(function(e) {
+          $("<span>").addClass("error").text("error polling job " + id + ": " + e).appendTo($out);
+        });
+    };
+
+    $('#scan').click(function() {
+      $.ajax({url: "/scan", method: "POST"})
+        .then(function(data) {
+          if ("id" in data) {
+            $("<span>").addClass("started").text("started " + data.id).appendTo($out);
+            ajaxPoll(data.id);
+          }
+        });
+    });
+  });
+</script>
+
+</body>
+</html>

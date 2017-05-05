@@ -7,17 +7,18 @@ class RepoAsyncWriter {
     this.destination = destination;
     this._path = tmpPath;
     this._writer = fs.createWriteStream(null, {fd: tmpFd});
+    this._write_fisished = false;
+    const self = this;
     this._writer.on('error', err => {
-      this.abort(err);
-    })
+      self.abort(err);
+    });
+    this._writer.on('finish', () => {
+      self._write_fisished = true;
+    });
   }
 
-  write(data) {
-    if (this._writer) {
-      if (this._writer.write(data)) {
-        this.abort();
-      }
-    }
+  writeStream() {
+    return this._writer;
   }
 
   abort() {
@@ -45,7 +46,7 @@ class RepoAsyncWriter {
     return new Promise((resolve, reject) => {
       if (writer) {
         writer.end();
-        writer.on('finish', () => {
+        const rename = () => {
           fs.rename(tmpPath, destination, err => {
             if (err) {
               console.error(`cannot rename ${tmpPath} to ${destination}: ${err.message}`);
@@ -56,7 +57,12 @@ class RepoAsyncWriter {
               resolve(destination);
             }
           });
-        });
+        };
+        if (self._write_fisished) {
+          rename();
+        } else {
+          self._writer.on('finish', rename);
+        }
       } else {
         reject("already failed");
       }
@@ -73,18 +79,11 @@ class Repo {
     return dateformat(new Date(), "isoUtcDateTime") + ".jpg";
   };
 
-
-  _nextTmpPath() {
-    return this.basedir + "/tmp/" + Repo.nextId();
-  }
-
-  _nextDstPath() {
-    return this.basedir + "/" + Repo.nextId();
-  }
-
   mktemp() {
-    const tmpPath = this._nextTmpPath();
-    const destination = this._nextDstPath();
+    const id = Repo.nextId();
+
+    const tmpPath = this.basedir + "/tmp/" + id;
+    const destination = this.basedir + "/" + id;
 
     return new Promise((resolve, reject) => {
       fs.open(tmpPath, "wx", 0o600, (err, fd) => {

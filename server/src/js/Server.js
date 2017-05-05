@@ -1,15 +1,19 @@
 'use strict';
 
 const listen = process.argv.length > 2 ? process.argv[2] : 8080;
-const repodir = "/tmp";
+const repodir = "/tmp/node/";
 
 const WebSocket = require('ws');
 
 const http = require('http');
 const scan = require('./Scan');
+const fs = require("fs");
 
 const Repo = require('./Repository').Repo;
 const repo = new Repo(repodir);
+
+const s = "client/build";
+const statics = ["/index.html", "/js/jquery-3.2.1.min.js"];
 
 const errorHandler = (res) => e => {
   try {
@@ -82,8 +86,17 @@ const handleScan = (req, res) => {
 };
 
 const httpServer = http.createServer((req, res) => {
-  if (/^\/scan\/.*/.test(req.url)) {
+  if (/^\/scan\/?.*/.test(req.url)) {
     handleScan(req, res);
+  } else if (statics.includes(req.url)) {
+    const path = s + req.url;
+    const stat = fs.statSync(path);
+
+    res.writeHead(200, {
+      'Content-Length': stat.size
+    });
+
+    fs.createReadStream(path).pipe(res);
   } else {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json');
