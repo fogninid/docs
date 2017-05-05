@@ -1,4 +1,7 @@
+const EventEmitter = require('events');
 const spawn = require('child_process').spawn;
+
+const debuglog = require("util").debuglog("scan");
 
 const command = "/usr/bin/cat";
 const commandArgs = ['/home/daniele/img/DFognini.jpg'];
@@ -10,10 +13,18 @@ const nextId = () => {
   return current++;
 };
 
+class ScanProgress extends EventEmitter {
+  constructor(id, destination) {
+    super();
+    this.id = id;
+    this.destination = destination;
+  }
+}
+
 exports.start = destination => {
   const id = nextId();
 
-  const status = {running: true};
+  const status = {status: "started"};
   const handle = {status: status};
 
   running[id] = handle;
@@ -25,15 +36,20 @@ exports.start = destination => {
       handle.process = process;
       process.stdin.end();
 
+      const scanProgress = new ScanProgress(id);
+
       process.on('error', e => {
         console.warn(`error from process: ${e.stack}`);
-        status.running = false;
+        delete handle.process;
+        status.status = "error";
         status.error = e.message;
+        scanProgress.emit('error', e);
       });
 
       process.stdout.on('data', data => {
         const size = status.size || 0;
         status.size = size + data.length;
+        destination.write(data);
       });
 
       process.stderr.setEncoding('utf8');
@@ -42,16 +58,32 @@ exports.start = destination => {
       });
 
       process.on('exit', (code, signal) => {
+        handle.running = false;
+        delete handle.process;
         if (code !== null) {
-          console.info(`process ${process.pid} exited with code ${code}`);
+          if (code === 0) {
+            debuglog("process %d completed", process.pid);
+            destination.commit()
+              .then(() => {
+                status.status = "success";
+                scanProgress.emit('complete');
+              })
+              .catch(err => {
+                status.status = "error";
+                status.cause = err.message;
+              });
+            return;
+          } else {
+            console.info(`process ${process.pid} exited with code ${code}`);
+          }
         }
         if (signal !== null) {
           console.info(`process ${process.pid} exited with signal ${signal}`);
         }
-        status.running = false;
-        status.code = code;
+        destination.abort();
+        status.status = "error";
       });
-      resolve(id);
+      resolve(scanProgress);
     } catch (e) {
       reject(e);
     }
@@ -62,7 +94,7 @@ exports.stop = id => {
   return new Promise((resolve, reject) => {
     if (running.hasOwnProperty(id)) {
       const handle = running[id];
-      if (handle.status.running) {
+      if (handle.running) {
         try {
           console.info(`killing process ${handle.process.pid}`);
           handle.process.kill();

@@ -4,6 +4,9 @@ const WebSocket = require('ws');
 const http = require('http');
 
 const scan = require('./Scan');
+const Repo = require('./Repository').Repo;
+
+const repo = new Repo("/tmp");
 
 const errorHandler = (res) => e => {
   try {
@@ -31,8 +34,12 @@ const handleScan = (req, res) => {
   if (/^\/scan\/?$/.test(url)) {
 
     if (method === 'POST') {
-      scan.start()
-        .then(id => {
+      repo.mktemp()
+        .then(outTmp => {
+          return scan.start(outTmp);
+        })
+        .then(scanning => {
+          const id = scanning.id;
           res.statusCode = 201;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({id: id}));

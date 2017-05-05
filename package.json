@@ -2,7 +2,8 @@
   "name": "docs",
   "version": "0.0.1",
   "dependencies": {
-    "ws": "latest"
+    "ws": "2.3.1",
+    "dateformat": "2.0.0"
   },
   "main": "server/src/js/Server.js",
   "devDependencies": {},
