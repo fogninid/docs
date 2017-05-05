@@ -1,0 +1,14 @@
+{
+  "name": "docs",
+  "version": "0.0.1",
+  "dependencies": {
+    "ws": "latest"
+  },
+  "main": "server/src/js/Server.js",
+  "devDependencies": {},
+  "scripts": {
+    "make-client": "make client"
+  },
+  "author": "Daniele Fognini",
+  "license": "MIT"
+}
