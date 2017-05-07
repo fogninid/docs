@@ -2,8 +2,9 @@
   "name": "docs",
   "version": "0.0.1",
   "dependencies": {
-    "ws": "2.3.1",
-    "dateformat": "2.0.0"
+    "dateformat": "2.0.0",
+    "optimist": "^0.6.1",
+    "ws": "2.3.1"
   },
   "main": "server/src/js/Server.js",
   "devDependencies": {},

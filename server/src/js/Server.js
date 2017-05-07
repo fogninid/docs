@@ -1,18 +1,31 @@
 'use strict';
 
-const listen = process.argv.length > 2 ? process.argv[2] : 8080;
-const repodir = "/tmp/node/";
+const argv = require('optimist')
+  .default({
+    listen: 8080,
+    scan: {
+      command: "scan",
+      args: []
+    },
+    repoDir: "/tmp/node",
+    staticsDir: "client/build"
+  })
+  .argv;
+
+const listen = argv.listen;
 
 const WebSocket = require('ws');
 
 const http = require('http');
-const scan = require('./Scan');
+const Scan = require('./Scan').Scan;
 const fs = require("fs");
 
 const Repo = require('./Repository').Repo;
-const repo = new Repo(repodir);
+const repo = new Repo(argv.repoDir);
 
-const s = "client/build";
+const scan = new Scan(argv.scan.command, argv.scan.args);
+
+const s = argv.staticsDir;
 const statics = ["/index.html", "/js/jquery-3.2.1.min.js"];
 
 const errorHandler = (res) => e => {
@@ -90,13 +103,20 @@ const httpServer = http.createServer((req, res) => {
     handleScan(req, res);
   } else if (statics.includes(req.url)) {
     const path = s + req.url;
-    const stat = fs.statSync(path);
+    fs.stat(path, (err, stat) => {
+      if (err) {
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({error: "not found"}));
+      } else {
+        res.writeHead(200, {
+          'Content-Length': stat.size
+        });
 
-    res.writeHead(200, {
-      'Content-Length': stat.size
+        fs.createReadStream(path).pipe(res);
+      }
     });
 
-    fs.createReadStream(path).pipe(res);
   } else {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json');

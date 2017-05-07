@@ -5,11 +5,6 @@ const debuglog = require("util").debuglog("scan");
 
 const Transform = require("stream").Transform;
 
-const command = "/usr/bin/ssh";
-const commandArgs = ['pi.home', './fakescan'];
-
-const running = {};
-
 let current = 0;
 const nextId = () => {
   return current++;
@@ -75,108 +70,125 @@ class ScanProgress extends EventEmitter {
   }
 }
 
-exports.start = destination => {
-  const id = nextId();
+class Scan {
+  constructor(command, commandArgs) {
+    this._command = command;
+    this._commandArgs = Object.values(commandArgs) || [];
+    this._running = {};
+  }
 
-  const status = {status: "started", size: 0};
-  const handle = {status: status};
+  start(destination) {
+    const command = this._command;
+    const commandArgs = this._commandArgs;
+    const running = this._running;
 
-  running[id] = handle;
+    const id = nextId();
 
-  return new Promise((resolve, reject) => {
-    try {
-      const process = spawn(command, commandArgs);
+    const status = {status: "started", size: 0};
+    const handle = {status: status};
 
-      handle.process = process;
-      process.stdin.end();
+    running[id] = handle;
 
-      const scanProgress = new ScanProgress(id);
+    return new Promise((resolve, reject) => {
+      try {
+        const process = spawn(command, commandArgs);
 
-      const setError = e => {
-        delete handle.process;
-        const message = e.message || e;
-        console.warn(`error from process: ${message}`);
-        status.status = "error";
-        status.error = message;
-      };
+        handle.process = process;
+        process.stdin.end();
 
-      process.on('error', setError);
-      process.stdout.on('error', setError);
-      process.stdout
-        .pipe(new CountTransformer(count => {
-          status.size += count;
-        }))
-        .pipe(destination.writeStream());
+        const scanProgress = new ScanProgress(id);
 
-      process.stderr.setEncoding('utf8');
-      process.stderr
-        .pipe(new ProgressParser())
-        .on('data', progress => {
-          status.progress = progress;
+        const setError = e => {
+          delete handle.process;
+          const message = e.message || e;
+          console.warn(`error from process: ${message}`);
+          status.status = "error";
+          status.error = message;
+        };
+
+        process.on('error', setError);
+        process.stdout.on('error', setError);
+        process.stdout
+          .pipe(new CountTransformer(count => {
+            status.size += count;
+          }))
+          .pipe(destination.writeStream());
+
+        process.stderr.setEncoding('utf8');
+        process.stderr
+          .pipe(new ProgressParser())
+          .on('data', progress => {
+            status.progress = progress;
+          });
+
+        process.on('exit', (code, signal) => {
+          handle.running = false;
+          delete handle.process;
+          if (code !== null) {
+            if (code === 0 && status.status !== "error") {
+              debuglog("process %d completed", process.pid);
+              destination
+                .commit()
+                .then(() => {
+                  status.status = "success";
+                  scanProgress.emit('complete');
+                })
+                .catch(err => {
+                  status.status = "error";
+                  status.cause = err.message || err;
+                });
+              return;
+            } else {
+              console.info(`process ${process.pid} exited with code ${code}`);
+            }
+          }
+          if (signal !== null) {
+            console.info(`process ${process.pid} exited with signal ${signal}`);
+          }
+          destination.abort();
+          status.status = "error";
         });
+        resolve(scanProgress);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
 
-      process.on('exit', (code, signal) => {
-        handle.running = false;
-        delete handle.process;
-        if (code !== null) {
-          if (code === 0 && status.status !== "error") {
-            debuglog("process %d completed", process.pid);
-            destination
-              .commit()
-              .then(() => {
-                status.status = "success";
-                scanProgress.emit('complete');
-              })
-              .catch(err => {
-                status.status = "error";
-                status.cause = err.message || err;
-              });
-            return;
-          } else {
-            console.info(`process ${process.pid} exited with code ${code}`);
+  stop(id) {
+    const running = this._running;
+    return new Promise((resolve, reject) => {
+      if (running.hasOwnProperty(id)) {
+        const handle = running[id];
+        if (handle.running) {
+          try {
+            console.info(`killing process ${handle.process.pid}`);
+            handle.process.kill();
+          } catch (e) {
+            console.warn(`cannot kill: ${e.message}\n ${e.stack}`)
           }
         }
-        if (signal !== null) {
-          console.info(`process ${process.pid} exited with signal ${signal}`);
-        }
-        destination.abort();
-        status.status = "error";
-      });
-      resolve(scanProgress);
-    } catch (e) {
-      reject(e);
-    }
-  });
-};
-
-exports.stop = id => {
-  return new Promise((resolve, reject) => {
-    if (running.hasOwnProperty(id)) {
-      const handle = running[id];
-      if (handle.running) {
-        try {
-          console.info(`killing process ${handle.process.pid}`);
-          handle.process.kill();
-        } catch (e) {
-          console.warn(`cannot kill: ${e.message}\n ${e.stack}`)
-        }
+        delete running[id];
+        resolve();
+      } else {
+        reject({code: 404, cause: "no job with id=" + id});
       }
-      delete running[id];
-      resolve();
-    } else {
-      reject({code: 404, cause: "no job with id=" + id});
-    }
-  });
-};
-
-exports.list = () => {
-  return Object.keys(running);
-};
-
-exports.status = id => {
-  if (running.hasOwnProperty(id)) {
-    return running[id].status;
-  } else {
-    return null;
+    });
   }
-};
+
+  list() {
+    const running = this._running;
+    return Object.keys(running);
+  }
+
+  status(id) {
+    const running = this._running;
+    if (running.hasOwnProperty(id)) {
+      return running[id].status;
+    } else {
+      return null;
+    }
+  }
+}
+
+exports.Scan = Scan;
