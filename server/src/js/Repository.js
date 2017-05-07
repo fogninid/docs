@@ -61,7 +61,7 @@ class RepoAsyncWriter {
         if (self._write_fisished) {
           rename();
         } else {
-          self._writer.on('finish', rename);
+          writer.on('finish', rename);
         }
       } else {
         reject("already failed");
