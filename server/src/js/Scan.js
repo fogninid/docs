@@ -29,12 +29,14 @@ class ProgressParser extends Transform {
       objectMode: true
     });
     this._left = "";
+    this._progressDelimiter = '\r';
+    this._progressRegex = /^Progress: ([0-9.]+)%/;
   }
 
   _transform(chunk, encoding, callback) {
     const data = this._left + (chunk.toString());
     const self = this;
-    const lines = data.split('\n');
+    const lines = data.split(this._progressDelimiter);
     const full = lines.length - 1;
     lines.forEach((value, index) => {
       if (index < full) {
@@ -48,8 +50,8 @@ class ProgressParser extends Transform {
 
   _pushParsed(value) {
     try {
-      if (/^[0-9]+$/.test(value)) {
-        this.push(parseInt(value));
+      if (this._progressRegex.test(value)) {
+        this.push(parseFloat(this._progressRegex.exec(value)[1]));
       }
     } catch (e) {
     }
@@ -61,6 +63,7 @@ class ProgressParser extends Transform {
   }
 }
 
+exports.ProgressParser = ProgressParser;
 
 class ScanProgress extends EventEmitter {
   constructor(id, destination) {
