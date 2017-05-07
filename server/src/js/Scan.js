@@ -91,6 +91,7 @@ class Scan {
 
     return new Promise((resolve, reject) => {
       try {
+        debuglog("spawning '%s' with '%j'", command, commandArgs);
         const process = spawn(command, commandArgs);
 
         handle.process = process;
