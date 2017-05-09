@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+echo -n $'Progress: 1.0%\r' >& 2
+echo a
+sleep 0.5s
+echo -n $'Progress: 10.0%\r' >& 2
+sleep 0.2s
+echo -n $'Progress: 20.0%\r' >& 2
+sleep 0.2s
+echo -n $'Progress: 30.0%\r' >& 2
+sleep 0.2s
+echo -n $'Progress: 40.0%\r' >& 2
+sleep 0.2s
+echo -n $'Progress: 50.0%\r' >& 2
+sleep 1.0s
+echo -n $'Progress: 80.0%\r' >& 2
+sleep 0.5s
+echo b
+echo -n $'Progress: 100.0%' >& 2

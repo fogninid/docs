@@ -76,7 +76,7 @@ class ScanProgress extends EventEmitter {
 class Scan {
   constructor(command, commandArgs) {
     this._command = command;
-    this._commandArgs = Object.values(commandArgs) || [];
+    this._commandArgs = Object.values(commandArgs || {});
     this._running = {};
   }
 

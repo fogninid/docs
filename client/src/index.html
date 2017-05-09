@@ -4,8 +4,39 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <style type="text/css">
-        span.update, span.started {
-            display: block;
+        body {
+            background: white;
+            color: black;
+        }
+
+        .scan {
+            height: 150px;
+            width: 150px;
+            background: #ababab;
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress {
+            background: #00aa00;
+            height: 150px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .progress span {
+            line-height: 150px;
+        }
+
+        .success {
+            background: green;
+        }
+
+        .error {
+            background: red;
         }
     </style>
 </head>
@@ -24,29 +55,94 @@
   $(function() {
     var $out = $("#output");
 
-    var ajaxPoll;
-    ajaxPoll = function(id) {
+    var pollProgress;
+    pollProgress = function(id, progressUpdater) {
       $.ajax({url: "/scan/" + id})
-        .then(function(data) {
-          $("<span>").addClass("update").text("job " + id + " is now: " + JSON.stringify(data)).appendTo($out);
-          if (!(data.status === "error" || data.status === "success")) {
-            window.setTimeout(function() {
-              ajaxPoll(id);
-            }, 300);
+        .then(function(scanStatus) {
+          if (scanStatus.status === "error") {
+            progressUpdater.error(scanStatus);
+          } else {
+            progressUpdater.success(scanStatus);
+            if (scanStatus.status !== "success") {
+              window.setTimeout(function() {
+                pollProgress(id, progressUpdater);
+              }, 500);
+            }
           }
         })
-        .catch(function(e) {
-          $("<span>").addClass("error").text("error polling job " + id + ": " + e).appendTo($out);
+        .catch(function(err) {
+          progressUpdater.error(err);
         });
     };
 
+    var addScanningElement = function() {
+      var $div = $("<div class='scan'>");
+      var $progress = $("<div class='progress'>");
+      var $message = $("<span class='status'>");
+
+      $progress.appendTo($div);
+      $message.appendTo($progress);
+      $div.appendTo($out);
+
+      var setStatus = function(status) {
+        switch (status) {
+          case "started":
+            $div.attr("class", "scan started");
+            break;
+          case "success":
+            $progress.hide();
+            $div.attr("class", "scan success");
+            break;
+          case "error":
+          default:
+            $progress.hide();
+            $div.attr("class", "scan error");
+        }
+      };
+
+      return {
+        setStatus: setStatus,
+        setError: function(err) {
+          var message = err.message || err.cause || err.error;
+          setStatus("error");
+          $message.attr("title", message);
+        },
+        setProgress: function(progress) {
+          $progress.css({width: progress + "%"});
+        },
+        setSize: function(size) {
+          if (size) {
+
+          }
+        }
+      };
+    };
+
     $('#scan').click(function() {
+      var scanningElement = addScanningElement();
       $.ajax({url: "/scan", method: "POST"})
         .then(function(data) {
           if ("id" in data) {
-            $("<span>").addClass("started").text("started " + data.id).appendTo($out);
-            ajaxPoll(data.id);
+            var progress = 0;
+            pollProgress(data.id, {
+              success: function(scanStatus) {
+                scanningElement.setStatus(scanStatus.status);
+                if (scanStatus.progress > progress) {
+                  progress = scanStatus.progress;
+                  scanningElement.setProgress(progress);
+                }
+                scanningElement.setSize(scanStatus.size);
+              },
+              error: function(err) {
+                scanningElement.setError(err);
+              }
+            });
+          } else {
+            scanningElement.setError("no id in response");
           }
+        })
+        .catch(function(err) {
+          scanningElement.setError(err);
         });
     });
   });
