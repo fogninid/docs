@@ -17,3 +17,5 @@ echo -n $'Progress: 80.0%\r' >& 2
 sleep 0.5s
 echo b
 echo -n $'Progress: 100.0%' >& 2
+
+(($RANDOM%10!=1))
