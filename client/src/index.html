@@ -139,7 +139,9 @@
           }
 
           if (status.path) {
-            $message.text(status.path);
+            const repoPath = "repo/" + status.path;
+            const $l = $("<a>").attr("href", repoPath).text(status.path);
+            $l.appendTo($message);
           }
 
           return setStatus(status.status);

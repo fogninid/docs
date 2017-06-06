@@ -3,8 +3,9 @@ const dateformat = require('dateformat');
 const debuglog = require("util").debuglog("repo");
 
 class RepoAsyncWriter {
-  constructor(destination, tmpPath, tmpFd) {
+  constructor(destination, destPath, tmpPath, tmpFd) {
     this.destination = destination;
+    this.destPath = destPath;
     this._path = tmpPath;
     this._writer = fs.createWriteStream(null, {fd: tmpFd});
     this._write_fisished = false;
@@ -37,6 +38,7 @@ class RepoAsyncWriter {
   commit() {
     debuglog("committing %s", this._path);
     const tmpPath = this._path;
+    const destPath = this.destPath;
     const destination = this.destination;
     const writer = this._writer;
     this._writer = null;
@@ -47,13 +49,13 @@ class RepoAsyncWriter {
       if (writer) {
         writer.end();
         const rename = () => {
-          fs.rename(tmpPath, destination, err => {
+          fs.rename(tmpPath, destPath, err => {
             if (err) {
-              console.error(`cannot rename ${tmpPath} to ${destination}: ${err.message}`);
+              console.error(`cannot rename ${tmpPath} to ${destPath}: ${err.message}`);
               self.abort();
               reject(err);
             } else {
-              console.log(`completed write to ${destination}`);
+              console.log(`completed write to ${destPath}`);
               resolve(destination);
             }
           });
@@ -80,17 +82,17 @@ class Repo {
   };
 
   mktemp(name) {
-    const id = (name || "scan") + "_" + Repo.nextId();
+    const destination = (name || "scan") + "_" + Repo.nextId();
 
-    const tmpPath = this.basedir + "/tmp/" + id;
-    const destination = this.basedir + "/" + id;
+    const tmpPath = this.basedir + "/tmp/" + destination;
+    const destPath = this.basedir + "/" + destination;
 
     return new Promise((resolve, reject) => {
       fs.open(tmpPath, "wx", 0o644, (err, fd) => {
         if (err) {
           reject(err);
         } else {
-          resolve(new RepoAsyncWriter(destination, tmpPath, fd));
+          resolve(new RepoAsyncWriter(destination, destPath, tmpPath, fd));
         }
       });
     });
