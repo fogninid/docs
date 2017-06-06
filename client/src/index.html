@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Title</title>
     <style type="text/css">
         body {
@@ -18,6 +19,7 @@
             padding: 10px;
             border-radius: 10px;
             overflow: hidden;
+            position: relative;
         }
 
         .progress {
@@ -25,10 +27,25 @@
             height: 150px;
             border-radius: 8px;
             text-align: center;
+            position: relative;
         }
 
         .progress span {
             line-height: 150px;
+            position: relative;
+        }
+
+        .scan .size {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+        }
+
+        .scan .status {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translate(0, -50%);
         }
 
         .success {
@@ -48,103 +65,117 @@
 <div>
     <form action="">
         <input id="scan" value="Scan" type="button">
+        <label for="name">name</label><input id="name" value="" type="text">
     </form>
 </div>
 <div id="output"></div>
 
 <script language="javascript" type="text/javascript">
   $(function() {
-    var $out = $("#output");
+    const $out = $("#output");
 
-    var pollProgress;
-    pollProgress = function(id, progressUpdater) {
-      $.ajax({url: "/scan/" + id})
-        .then(function(scanStatus) {
-          if (scanStatus.status === "error") {
-            progressUpdater.error(scanStatus);
+    const delay = function(millis) {
+      return new Promise(resolve => {
+        window.setTimeout(resolve, millis);
+      });
+    };
+
+    const pollProgress = (id, progressUpdater) => {
+      return $.ajax({url: "/scan/" + id})
+        .then(scanStatus => {
+          if (progressUpdater.updateStatus(scanStatus)) {
+            return delay(500)
+              .then(() => pollProgress(id, progressUpdater));
           } else {
-            progressUpdater.success(scanStatus);
-            if (scanStatus.status !== "success") {
-              window.setTimeout(function() {
-                pollProgress(id, progressUpdater);
-              }, 500);
-            }
+            return scanStatus;
           }
         })
         .catch(function(err) {
-          progressUpdater.error(err);
+          progressUpdater.setError(err);
+          throw err;
         });
     };
 
-    var addScanningElement = function() {
-      var $div = $("<div class='scan'>");
-      var $progress = $("<div class='progress'>");
-      var $message = $("<span class='status'>");
+    const addScanningElement = () => {
+      const $div = $("<div class='scan'>");
+      const $progress = $("<div class='progress'>");
+      const $cont = $("<div class='container'>");
+      const $message = $("<span class='status'>");
+      const $size = $("<span class='size'>");
 
       $progress.appendTo($div);
-      $message.appendTo($progress);
+      $message.appendTo($cont);
+      $size.appendTo($cont);
+      $cont.appendTo($div);
       $div.appendTo($out);
 
-      var setStatus = function(status) {
+      const setStatus = status => {
         switch (status) {
           case "started":
             $div.attr("class", "scan started");
-            break;
+            return true;
           case "success":
-            $progress.hide();
             $div.attr("class", "scan success");
-            break;
+            return false;
           case "error":
           default:
             $progress.hide();
             $div.attr("class", "scan error");
+            return false;
         }
       };
 
+      let progress = 0;
+
       return {
-        setStatus: setStatus,
-        setError: function(err) {
-          var message = err.message || err.cause || err.error;
+        updateStatus: status => {
+          if (status.progress > progress) {
+            progress = status.progress;
+            $progress.css({width: progress + "%"});
+          }
+
+          if (status.size) {
+            $size.text(status.size);
+          }
+
+          if (status.path) {
+            $message.text(status.path);
+          }
+
+          return setStatus(status.status);
+        },
+        setError: err => {
+          const message = err.message || err.cause || err.error;
           setStatus("error");
           $message.attr("title", message);
         },
-        setProgress: function(progress) {
-          $progress.css({width: progress + "%"});
-        },
-        setSize: function(size) {
-          if (size) {
-
-          }
-        }
       };
     };
 
-    $('#scan').click(function() {
-      var scanningElement = addScanningElement();
-      $.ajax({url: "/scan", method: "POST"})
-        .then(function(data) {
+    const $name = $('#name');
+    $('#scan').click(() => {
+      const scanningElement = addScanningElement();
+
+      const data = {
+        name: $name.val()
+      };
+
+      $.ajax({
+        url: "/scan",
+        method: "POST",
+        data: JSON.stringify(data),
+        contentType: "application/json",
+        dataType: 'json'
+      })
+        .then(data => {
           if ("id" in data) {
-            var progress = 0;
-            pollProgress(data.id, {
-              success: function(scanStatus) {
-                scanningElement.setStatus(scanStatus.status);
-                if (scanStatus.progress > progress) {
-                  progress = scanStatus.progress;
-                  scanningElement.setProgress(progress);
-                }
-                scanningElement.setSize(scanStatus.size);
-              },
-              error: function(err) {
-                scanningElement.setError(err);
-              }
-            });
+            return data.id;
           } else {
-            scanningElement.setError("no id in response");
+            throw new Error("no id in response");
           }
         })
-        .catch(function(err) {
-          scanningElement.setError(err);
-        });
+        .then(id => pollProgress(id, scanningElement))
+        .catch(err => scanningElement.setError(err));
     });
   });
 </script>

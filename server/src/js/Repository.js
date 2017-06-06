@@ -79,14 +79,14 @@ class Repo {
     return dateformat(new Date(), "isoUtcDateTime") + ".jpg";
   };
 
-  mktemp() {
-    const id = Repo.nextId();
+  mktemp(name) {
+    const id = (name || "scan") + "_" + Repo.nextId();
 
     const tmpPath = this.basedir + "/tmp/" + id;
     const destination = this.basedir + "/" + id;
 
     return new Promise((resolve, reject) => {
-      fs.open(tmpPath, "wx", 0o600, (err, fd) => {
+      fs.open(tmpPath, "wx", 0o644, (err, fd) => {
         if (err) {
           reject(err);
         } else {

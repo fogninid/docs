@@ -133,9 +133,9 @@ class Scan {
               debuglog("process %d completed", process.pid);
               destination
                 .commit()
-                .then(() => {
+                .then(path => {
                   status.status = "success";
-                  scanProgress.emit('complete');
+                  status.path = path;
                 })
                 .catch(err => {
                   status.status = "error";

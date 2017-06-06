@@ -28,6 +28,25 @@ const scan = new Scan(argv.scan.command, argv.scan.args);
 const s = argv.staticsDir;
 const statics = ["/index.html", "/js/jquery-3.2.1.min.js"];
 
+function parseJSON(req) {
+  let body = '';
+  req.setEncoding('utf8');
+
+  req.on('data', (chunk) => {
+    body += chunk;
+  });
+
+  return new Promise((resolve, reject) => {
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body));
+      } catch (er) {
+        reject(er);
+      }
+    });
+  });
+}
+
 const errorHandler = (res) => e => {
   try {
     if (e instanceof Error) {
@@ -54,7 +73,10 @@ const handleScan = (req, res) => {
   if (/^\/scan\/?$/.test(url)) {
 
     if (method === 'POST') {
-      repo.mktemp()
+      parseJSON(req)
+        .then(data => {
+          return repo.mktemp(data.name);
+        })
         .then(outTmp => {
           return scan.start(outTmp);
         })
