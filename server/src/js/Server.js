@@ -25,7 +25,7 @@ const repo = new Repo(argv.repoDir);
 
 const scan = new Scan(argv.scan.command, argv.scan.args);
 
-const s = argv.staticsDir;
+const staticsDir = argv.staticsDir;
 const statics = ["/index.html", "/js/jquery-3.2.1.min.js"];
 
 function parseJSON(req) {
@@ -120,29 +120,41 @@ const handleScan = (req, res) => {
   }
 };
 
+function returnError(res) {
+  res.statusCode = 404;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify({error: "not found"}));
+}
+
+function serveFile(path, res) {
+  fs.stat(path, (err, stat) => {
+    if (err) {
+      returnError(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': stat.size
+      });
+
+      fs.createReadStream(path).pipe(res);
+    }
+  });
+}
+
 const httpServer = http.createServer((req, res) => {
-  if (/^\/scan\/?.*/.test(req.url)) {
+  const url = req.url;
+  if (/^\/scan\/?.*/.test(url)) {
     handleScan(req, res);
-  } else if (statics.includes(req.url)) {
-    const path = s + req.url;
-    fs.stat(path, (err, stat) => {
-      if (err) {
-        res.statusCode = 404;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({error: "not found"}));
-      } else {
-        res.writeHead(200, {
-          'Content-Length': stat.size
-        });
-
-        fs.createReadStream(path).pipe(res);
-      }
-    });
-
+  } else if (/^\/repo\/.*/.test(url)) {
+    const repoUrl = /^\/repo\/(.*)/.exec(url)[1];
+    if (/\.\./.test(repoUrl)) {
+      returnError(res);
+    } else {
+      serveFile(repo.basedir + "/" + repoUrl, res);
+    }
+  } else if (statics.includes(url)) {
+    serveFile(staticsDir + url, res);
   } else {
-    res.statusCode = 404;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({error: "not found"}));
+    returnError(res);
   }
 });
 
