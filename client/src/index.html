@@ -48,6 +48,25 @@
             transform: translate(0, -50%);
         }
 
+        #name {
+            top: 10px;
+            position: relative;
+            margin: 15px auto;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #dbdbdb;
+            border: 0;
+            padding: 5px;
+            color: #333333;
+        }
+
+        #scan {
+            box-sizing: border-box;
+            margin: 15px auto;
+            width: 80px;
+            display: block;
+        }
+
         .success {
             background: green;
         }
@@ -62,13 +81,14 @@
 <script src="js/jquery-3.2.1.min.js"></script>
 
 <a href="repo/">scannerizzati</a>
-<div>
-    <form action="">
-        <input id="scan" value="Scan" type="button">
-        <label for="name">name</label><input id="name" value="" type="text">
-    </form>
+<div id="output">
+    <div class="scan">
+        <form action="">
+            <input id="name" value="" placeholder="name" type="text">
+            <input id="scan" value="Scan" type="button">
+        </form>
+    </div>
 </div>
-<div id="output"></div>
 
 <script language="javascript" type="text/javascript">
   $(function() {
