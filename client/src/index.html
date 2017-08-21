@@ -58,7 +58,7 @@
             border: 0;
         }
 
-        #scan {
+        #scan_button {
             box-sizing: border-box;
             margin: 15px auto;
             width: 80px;
@@ -104,9 +104,9 @@
 <div id="scans">
 </div>
 <div class="scan">
-    <form action="">
+    <form id="scan_form" action="">
         <input id="name" value="" placeholder="name" type="text">
-        <input id="scan" value="Scan" type="button">
+        <input id="scan_button" value="Scan" type="button">
     </form>
 </div>
 
@@ -195,7 +195,13 @@
     };
 
     const $name = $('#name');
-    $('#scan').click(() => {
+    var scanning = false;
+    const startScan = () => {
+      if (scanning) {
+        return false;
+      }
+      scanning = true;
+
       const scanningElement = addScanningElement();
 
       const data = {
@@ -217,8 +223,13 @@
           }
         })
         .then(id => pollProgress(id, scanningElement))
-        .catch(err => scanningElement.setError(err));
-    });
+        .catch(err => scanningElement.setError(err))
+        .then(() => scanning = false);
+
+      return false;
+    };
+    $('#scan_button').click(startScan);
+    $('#scan_form').submit(startScan);
   });
 </script>
 
