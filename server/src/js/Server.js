@@ -173,5 +173,8 @@ wsServer.on('listening', () => {
   console.log('web socket server started');
 });
 
-console.log("listening on %s", listen);
 httpServer.listen(listen);
+
+httpServer.on('listening', () => {
+  console.log("listening on %s", listen);
+});
