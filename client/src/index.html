@@ -22,19 +22,6 @@
             position: relative;
         }
 
-        .progress {
-            background: #00aa00;
-            height: 150px;
-            border-radius: 8px;
-            text-align: center;
-            position: relative;
-        }
-
-        .progress span {
-            line-height: 150px;
-            position: relative;
-        }
-
         .scan .size {
             position: absolute;
             bottom: 15px;
@@ -136,9 +123,32 @@
         });
     };
 
+    const getProgressUpdater = (context) => {
+      const cw = context.canvas.width;
+      const ch = context.canvas.height;
+      const cx = cw / 2;
+      const cy = ch / 2;
+      const sw = cx * 0.3;
+      const cr = cx - sw;
+
+      const offset = Math.PI * 1.5;
+      return (value) => {
+        const arcLen = ((value / 100) * Math.PI*2);
+        context.clearRect(0, 0, cw, ch);
+        context.lineWidth = sw;
+        context.fillStyle = '#09F';
+        context.strokeStyle = "#09F";
+        context.textAlign = 'center';
+        context.fillText(value+'%', cw*.5, ch*.5+2, cw);
+        context.beginPath();
+        context.arc(cx, cy, cr, offset, arcLen + offset, false);
+        context.stroke();
+      };
+    };
+
     const addScanningElement = () => {
       const $div = $("<div class='scan'>");
-      const $progress = $("<div class='progress' style='width: 0'>");
+      const $progress = $("<canvas width=150 height=150>");
       const $cont = $("<div class='container'>");
       const $message = $("<span class='status'>");
       const $size = $("<span class='size'>");
@@ -148,6 +158,8 @@
       $size.appendTo($cont);
       $cont.appendTo($div);
       $div.appendTo($out);
+
+      const progressUpdater = getProgressUpdater($progress[0].getContext('2d'));
 
       const setStatus = status => {
         switch (status) {
@@ -171,7 +183,7 @@
         updateStatus: status => {
           if (status.progress > progress) {
             progress = status.progress;
-            $progress.css({width: progress + "%"});
+            progressUpdater(progress);
           }
 
           if (status.size) {
