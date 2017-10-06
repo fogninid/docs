@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+listen="${1:-8080}"
+
+exec node server/src/js/Server.js --listen="$listen" --staticsDir="./client/build/" --repoDir="./server/test/repo/" --scan.command="./server/test/bash/fakescan"
