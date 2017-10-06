@@ -1,3 +1,5 @@
+DESTDIR = /srv/http/docs/
+
 .PHONY: client
 client:
 	mkdir -p client/build
@@ -10,6 +12,6 @@ server:
 
 .PHONY: install
 install:
-	cp -a node_modules/ /srv/http/docs/server/
-	cp server/src/js/*.js /srv/http/docs/server/
-	cp -r client/build/* /srv/http/docs/statics/
+	cp -a node_modules/ $(DESTDIR)/server/
+	cp server/src/js/*.js $(DESTDIR)/server/
+	cp -r client/build/* $(DESTDIR)/statics/
