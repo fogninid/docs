@@ -81,6 +81,18 @@ class Repo {
     return dateformat(new Date(), "isoUtcDateTime") + ".jpg";
   };
 
+  list() {
+    return new Promise((resolve, reject) => {
+      fs.readdir(this.basedir, (err, files) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(files);
+        }
+      });
+    });
+  }
+
   mktemp(name) {
     const destination = (name || "scan") + "_" + Repo.nextId();
 

@@ -128,14 +128,18 @@ function returnError(res) {
 
 function serveFile(path, res) {
   fs.stat(path, (err, stat) => {
-    if (err) {
+    if (err || !stat.isFile()) {
       returnError(res);
     } else {
       res.writeHead(200, {
         'Content-Length': stat.size
       });
 
-      fs.createReadStream(path).pipe(res);
+      try {
+        fs.createReadStream(path).pipe(res);
+      } catch (e) {
+        returnError(res);
+      }
     }
   });
 }
@@ -144,6 +148,16 @@ const httpServer = http.createServer((req, res) => {
   const url = req.url;
   if (/^\/scan\/?.*/.test(url)) {
     handleScan(req, res);
+  } else if (/^\/repo\/?$/.test(url)) {
+    repo.list()
+      .then(files => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(files));
+      })
+      .catch(err => {
+        returnError(res);
+      });
   } else if (/^\/repo\/.*/.test(url)) {
     const repoUrl = /^\/repo\/(.*)/.exec(url)[1];
     if (/\.\./.test(repoUrl)) {
