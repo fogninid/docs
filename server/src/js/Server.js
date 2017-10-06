@@ -26,7 +26,7 @@ const repo = new Repo(argv.repoDir);
 const scan = new Scan(argv.scan.command, argv.scan.args);
 
 const staticsDir = argv.staticsDir;
-const statics = ["/index.html", "/js/jquery-3.2.1.min.js"];
+const statics = ["/index.html", "/js/jquery-3.2.1.min.js", "/assets/repo.png"];
 
 function parseJSON(req) {
   let body = '';
