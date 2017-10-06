@@ -101,6 +101,19 @@
       });
     };
 
+    const inAnimationFrame = (callback) => {
+      return new Promise((resolve, reject) => {
+          window.requestAnimationFrame(() => {
+            try {
+              resolve(callback());
+            } catch (e) {
+              reject(e);
+            }
+          });
+        }
+      );
+    };
+
     const toBytes = f => {
       let r = f;
       let u = 0;
@@ -108,13 +121,14 @@
         ++u;
         r /= 1024;
       }
-      return "" + r.toFixed(1) + ["b", "kb", "Mb", "Gb"][u];
+      return "" + r.toFixed(1) + " " + ["b", "kb", "Mb", "Gb"][u];
     };
 
     const pollProgress = (id, progressUpdater) => {
       return $.ajax({url: "/scan/" + id})
+        .then(scanStatus => progressUpdater.updateStatus(scanStatus))
         .then(scanStatus => {
-          if (progressUpdater.updateStatus(scanStatus)) {
+          if (scanStatus.continues) {
             return delay(500)
               .then(() => pollProgress(id, progressUpdater));
           } else {
@@ -137,7 +151,7 @@
 
       const offset = Math.PI * 1.5;
       return (progress, size) => {
-        const arcLen = ((progress / 100) * Math.PI*2);
+        const arcLen = ((progress / 100) * Math.PI * 2);
         context.clearRect(0, 0, cw, ch);
 
         context.lineWidth = sw;
@@ -193,7 +207,7 @@
       let progress = 0;
 
       return {
-        updateStatus: status => {
+        updateStatus: status => inAnimationFrame(() => {
           if (status.progress > progress) {
             progress = status.progress;
           }
@@ -206,8 +220,9 @@
             $l.appendTo($message);
           }
 
-          return setStatus(status.status);
-        },
+          status.continues = setStatus(status.status);
+          return status;
+        }),
         setError: err => {
           const message = err.message || err.cause || err.error;
           setStatus("error");
