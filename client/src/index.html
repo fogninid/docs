@@ -64,10 +64,12 @@
 
         .success {
             background: #6cd56c;
+            background: radial-gradient(#6cd56c 50%, #dbdbdb);
         }
 
         .error {
             background: #d56c6c;
+            background: radial-gradient(#d56c6c 50%, #dbdbdb);
         }
     </style>
 </head>
@@ -177,12 +179,10 @@
     const addScanningElement = () => {
       const $div = $("<div class='scan'>");
       const $progress = $("<canvas width=150 height=150>");
-      const $cont = $("<div class='container'>");
       const $message = $("<span class='status'>");
 
       $progress.appendTo($div);
-      $message.appendTo($cont);
-      $cont.appendTo($div);
+      $message.appendTo($div);
       $div.appendTo($out);
 
       const progressUpdater = getProgressUpdater($progress[0].getContext('2d'));
