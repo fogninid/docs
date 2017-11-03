@@ -1,3 +1,4 @@
+const common = require('./Common');
 const EventEmitter = require('events');
 const spawn = require('child_process').spawn;
 
@@ -195,4 +196,55 @@ class Scan {
   }
 }
 
-exports.Scan = Scan;
+const express = require("express");
+const bodyParser = require('body-parser');
+
+app = (repo, command, commandArgs) => {
+  const rv = express();
+  const scan = new Scan(command, commandArgs);
+
+  rv.locals.scan = scan;
+  rv.locals.repo = repo;
+
+  rv.use(bodyParser.json());
+  rv.use(common.errorHandler);
+
+  rv.get('/', (req, res) => {
+    res.json(scan.list());
+  });
+
+  rv.post('/', (req, res, next) => {
+    repo.mktemp(req.body.name)
+      .then(outTmp => {
+        return scan.start(outTmp);
+      })
+      .then(scanning => {
+        res.status(201).json({id: scanning.id});
+      })
+      .catch(next);
+  });
+
+  rv.get('/:id', (req, res) => {
+    const id = req.params.id;
+    const status = scan.status(id);
+    if (status) {
+      res.json(status);
+    } else {
+      res.status(404).json({error: "not found"});
+    }
+  });
+
+  rv.delete('/:id', (req, res, next) => {
+    const id = req.params.id;
+    scan.stop(id)
+      .then(() => {
+        res.status(204).end();
+      })
+      .catch(next);
+  });
+
+  return rv;
+};
+
+exports.app = app;
+

@@ -1,3 +1,4 @@
+const express = require("express");
 const fs = require("fs");
 const dateformat = require('dateformat');
 const debuglog = require("util").debuglog("repo");
@@ -111,4 +112,24 @@ class Repo {
   }
 }
 
-exports.Repo = Repo;
+app = basedir => {
+  const rv = express();
+  rv.locals.repo = new Repo(basedir);
+
+  rv.use(express.static(basedir, {
+    index: false
+  }));
+
+  rv.get('/', (req, res, next) => {
+    req.app.locals.repo.list()
+      .then(files => {
+        res.json(files);
+      })
+      .catch(next);
+  });
+
+  return rv;
+};
+
+exports.app = app;
+
