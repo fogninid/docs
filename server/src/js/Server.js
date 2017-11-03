@@ -24,9 +24,11 @@ const repoApp = require('./Repository').app(argv.repoDir);
 const repo = repoApp.locals.repo;
 
 const scanApp = require('./Scan').app(repo, argv.scan.command, argv.scan.args);
+const uploadApp = require('./Upload').app(repoApp);
 
 app.use(express.static(argv.staticsDir));
 app.use('/repo', repoApp);
+app.use('/upload', uploadApp);
 app.use('/scan', scanApp);
 
 app.use(common.errorHandler);

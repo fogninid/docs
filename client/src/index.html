@@ -89,7 +89,7 @@
 <script src="js/jquery-3.2.1.min.js"></script>
 
 <div class="scan">
-    <form id="scan_upload_form" action="repo/" method="post" enctype="multipart/form-data">
+    <form id="scan_upload_form" action="upload/" method="post" enctype="multipart/form-data">
         <input id="scan_upload_name" value="" placeholder="name" type="text" name="name">
         <input id="scan_upload_file" class="small" value="file" title="file" placeholder="upload" type="file"
                name="upload">
@@ -289,8 +289,8 @@
       const formData = new FormData($uploadForm[0]);
 
       $.ajax({
-        url: "/repo",
-        method: "POST",
+        url: $uploadForm.attr("action"),
+        method: $uploadForm.attr("method"),
         data: formData,
         contentType: false,
         processData: false,
