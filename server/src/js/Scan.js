@@ -214,7 +214,7 @@ app = (repo, command, commandArgs) => {
   });
 
   rv.post('/', (req, res, next) => {
-    repo.mktemp(req.body.name)
+    repo.mktemp({name: req.body.name || "scan", ext: ".jpg"})
       .then(outTmp => {
         return scan.start(outTmp);
       })

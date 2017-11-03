@@ -1,7 +1,9 @@
+const common = require("./Common");
 const express = require("express");
 const fs = require("fs");
 const dateformat = require('dateformat');
 const debuglog = require("util").debuglog("repo");
+const multiparty = require('multiparty');
 
 class RepoAsyncWriter {
   constructor(destination, destPath, tmpPath, tmpFd) {
@@ -74,12 +76,13 @@ class RepoAsyncWriter {
 }
 
 class Repo {
-  constructor(basedir) {
+  constructor(app, basedir) {
+    this.app = app;
     this.basedir = basedir;
   }
 
   static nextId() {
-    return dateformat(new Date(), "isoUtcDateTime") + ".jpg";
+    return dateformat(new Date(), "isoUtcDateTime");
   };
 
   list() {
@@ -94,18 +97,19 @@ class Repo {
     });
   }
 
-  mktemp(name) {
-    const destination = (name || "scan") + "_" + Repo.nextId();
+  mktemp(finalOutput) {
+    const destName = finalOutput.name.replace(/[/?&`$:]/g, "_") + "_" + Repo.nextId() + finalOutput.ext;
 
-    const tmpPath = this.basedir + "/tmp/" + destination;
-    const destPath = this.basedir + "/" + destination;
+    const tmpPath = this.basedir + "/tmp/" + destName;
+    const destPath = this.basedir + "/" + destName;
+    const destUrl = this.app.mountpath + "/" + destName;
 
     return new Promise((resolve, reject) => {
       fs.open(tmpPath, "wx", 0o644, (err, fd) => {
         if (err) {
           reject(err);
         } else {
-          resolve(new RepoAsyncWriter(destination, destPath, tmpPath, fd));
+          resolve(new RepoAsyncWriter(destUrl, destPath, tmpPath, fd));
         }
       });
     });
@@ -114,19 +118,75 @@ class Repo {
 
 app = basedir => {
   const rv = express();
-  rv.locals.repo = new Repo(basedir);
+  const repo = (rv.locals.repo = new Repo(rv, basedir));
 
   rv.use(express.static(basedir, {
     index: false
   }));
 
   rv.get('/', (req, res, next) => {
-    req.app.locals.repo.list()
+    repo.list()
       .then(files => {
         res.json(files);
       })
       .catch(next);
   });
+
+  rv.post('/', (req, res, next) => {
+    const form = new multiparty.Form();
+
+    let name;
+    let success = false;
+
+    form.on('error', next);
+
+    form.on('field', (fieldName, fieldValue) => {
+      if (fieldName === "name") {
+        name = fieldValue;
+      }
+    });
+
+    form.on('part', part => {
+      if (part.filename) {
+        part.on('error', next);
+
+        const filename = common.splitFilename(part.filename);
+
+        if (name) {
+          filename.name = name;
+        }
+
+        repo.mktemp(filename)
+          .then(outTmp => {
+            const stream = part.pipe(outTmp.writeStream());
+            stream.on('finish', () => {
+              outTmp
+                .commit()
+                .then(path => {
+                  res.status(201).json({path: path});
+                })
+                .catch(next);
+            });
+          })
+          .catch(next);
+
+        success = true;
+      } else {
+        part.resume();
+      }
+    });
+
+    form.on('close', () => {
+      if (!success) {
+        res.status(400).json({error: "no file provided"});
+      }
+    });
+
+    form.parse(req);
+  });
+
+  rv.mktemp = repo.mktemp.bind(repo);
+  rv.list = repo.list.bind(repo);
 
   return rv;
 };

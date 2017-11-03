@@ -34,7 +34,7 @@
             transform: translate(0, -50%);
         }
 
-        #name {
+        input[type='text'] {
             position: relative;
             margin: 5px;
             width: 130px;
@@ -44,7 +44,7 @@
             border: 0;
         }
 
-        #scan_button {
+        input[type='button'], input[type='submit'], input[type='file'] {
             box-sizing: border-box;
             margin: 15px auto;
             width: 80px;
@@ -55,6 +55,12 @@
             background-color: #dbdbdb;
             color: #333333;
             border: 0;
+        }
+
+        input[type='button'].small, input[type='submit'].small, input[type='file'].small {
+            margin: 10px auto;
+            width: 130px;
+            height: 40px;
         }
 
         #scans {
@@ -83,9 +89,16 @@
 <script src="js/jquery-3.2.1.min.js"></script>
 
 <div class="scan">
-    <form id="scan_form" action="">
-        <input id="name" value="" placeholder="name" type="text" autofocus>
-        <input id="scan_button" value="Scan" type="button">
+    <form id="scan_upload_form" action="repo/" method="post" enctype="multipart/form-data">
+        <input id="scan_upload_name" value="" placeholder="name" type="text" name="name">
+        <input id="scan_upload_file" class="small" value="file" title="file" placeholder="upload" type="file"
+               name="upload">
+        <input id="scan_upload_button" class="small" title="start upload" value="Upload" type="submit">
+    </form>
+</div><div class="scan">
+    <form id="scan_form" action="legacy/scan/" method="post" enctype="multipart/form-data">
+        <input id="name" value="" placeholder="name" type="text" name="name" autofocus>
+        <input id="scan_button" value="Scan" title="start scan" type="button">
     </form>
 </div><div class="scan">
     <a href="repo/">
@@ -216,7 +229,7 @@
           progressUpdater(progress, status.size);
 
           if (status.path) {
-            const repoPath = "repo/" + status.path;
+            const repoPath = status.path;
             const $l = $("<a>").attr("href", repoPath).text(status.path);
             $l.appendTo($message);
           }
@@ -268,6 +281,37 @@
     };
     $('#scan_button').click(startScan);
     $('#scan_form').submit(startScan);
+
+    const $uploadForm = $('#scan_upload_form');
+    const startUpload = () => {
+      const scanningElement = addScanningElement();
+
+      const formData = new FormData($uploadForm[0]);
+
+      $.ajax({
+        url: "/repo",
+        method: "POST",
+        data: formData,
+        contentType: false,
+        processData: false,
+        dataType: 'json'
+      })
+        .then(data => {
+          if ("path" in data) {
+            scanningElement.updateStatus({
+              path: data.path,
+              status: "success"
+            });
+          } else {
+            throw new Error("cannot parse response");
+          }
+        })
+        .catch(err => scanningElement.setError(err));
+
+      return false;
+    };
+
+    $uploadForm.submit(startUpload);
   });
 </script>
 
