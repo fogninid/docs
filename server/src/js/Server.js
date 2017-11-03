@@ -31,27 +31,23 @@ app.use('/scan', scanApp);
 
 app.use(common.errorHandler);
 
-app.listen(argv.listen);
+const httpServer = app.listen(argv.listen);
 
-if (false) {
-  const wsServer = new WebSocket.Server({server: httpServer});
+const wsServer = new WebSocket.Server({server: httpServer});
 
-  wsServer.on('connection', (ws) => {
-    ws.on('message', (message) => {
-      console.log('received: %s', message);
-      ws.send('I got ' + message);
-    });
-
-    ws.send('I\'m server');
+wsServer.on('connection', (ws) => {
+  ws.on('message', (message) => {
+    console.log('received: %s', message);
+    ws.send('I got ' + message);
   });
 
-  wsServer.on('listening', () => {
-    console.log('web socket server started');
-  });
+  ws.send('I\'m server');
+});
 
-  httpServer.listen(listen);
+wsServer.on('listening', () => {
+  console.log('web socket server started');
+});
 
-  httpServer.on('listening', () => {
-    console.log("listening on %s", listen);
-  });
-}
+httpServer.on('listening', () => {
+  console.log("listening on %s", listen);
+});
