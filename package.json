@@ -1,10 +1,14 @@
 {
   "name": "docs",
   "version": "0.0.1",
+  "description": "Webapp for simple document management: scanning, updating, downloading, ...",
+  "repository": "pi.dfgHome:docs",
   "dependencies": {
-    "dateformat": "2.0.0",
+    "body-parser": "^1.18.2",
+    "dateformat": "^3.0.2",
+    "express": "^4.16.2",
     "optimist": "^0.6.1",
-    "ws": "2.3.1"
+    "ws": "^3.2.0"
   },
   "main": "server/src/js/Server.js",
   "devDependencies": {},
