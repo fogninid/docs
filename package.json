@@ -4,12 +4,12 @@
   "description": "Webapp for simple document management: scanning, updating, downloading, ...",
   "repository": "pi.dfgHome:docs",
   "dependencies": {
-    "body-parser": "^1.18.2",
-    "dateformat": "^3.0.2",
-    "express": "^4.16.2",
-    "multiparty": "^4.1.3",
+    "body-parser": "^1.19.0",
+    "dateformat": "^3.0.3",
+    "express": "^4.17.1",
+    "multiparty": "^4.2.1",
     "optimist": "^0.6.1",
-    "ws": "^3.2.0"
+    "ws": "^3.3.1"
   },
   "main": "server/src/js/Server.js",
   "devDependencies": {},
